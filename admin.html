@@ -1,0 +1,37 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OWS Admin Panel</title>
+<style>
+body{margin:0;background:#071426;color:#fff;font-family:system-ui,Arial}.wrap{width:min(1200px,94%);margin:auto;padding:30px 0 70px}
+h1{color:#f4d58b}.panel{background:#0d223b;border:1px solid #ffffff18;border-radius:20px;padding:20px;margin:18px 0}
+input,select,button{padding:11px;border-radius:10px;border:1px solid #ffffff18;background:#081a2d;color:#fff}
+button{background:#d9ad55;color:#111827;font-weight:800;cursor:pointer}.row{display:flex;gap:10px;flex-wrap:wrap}
+.table{overflow:auto}table{width:100%;border-collapse:collapse;min-width:900px}th,td{padding:12px;border-bottom:1px solid #ffffff12;text-align:left;font-size:13px}th{color:#f4d58b}
+.small{color:#aebbd0;font-size:13px}.error{color:#ff9c9c}.ok{color:#9ff0bd}
+</style></head><body><div class="wrap">
+<h1>OUT OF WARRANTY — Admin Panel</h1>
+<div class="panel"><div class="small">Enter your private admin key. Keep it secret.</div><div class="row" style="margin-top:10px"><input id="key" type="password" placeholder="Admin key"><button onclick="load()">Open Dashboard</button></div><div id="msg"></div></div>
+<div class="panel"><div class="row"><b>Total Complaints: <span id="count">—</span></b><button onclick="load()">Refresh</button></div>
+<div class="table"><table><thead><tr><th>Ticket</th><th>Customer</th><th>Mobile</th><th>Service</th><th>Address</th><th>Problem</th><th>Status</th><th>Update</th></tr></thead><tbody id="body"></tbody></table></div></div>
+</div>
+<script>
+let KEY="";
+const statuses=["New Request","Contacted","Technician Assigned","In Progress","Completed","Cancelled"];
+async function load(){
+ KEY=document.getElementById("key").value||KEY;
+ const r=await fetch("/api/admin/complaints",{headers:{"x-admin-key":KEY}});
+ if(!r.ok){document.getElementById("msg").innerHTML="<p class='error'>Wrong admin key or server not connected.</p>";return}
+ const rows=await r.json(); document.getElementById("count").textContent=rows.length;
+ document.getElementById("body").innerHTML=rows.map(x=>`<tr>
+ <td><b>${x.ticket}</b><br><span class="small">${x.created_at}</span></td>
+ <td>${esc(x.name)}</td><td>${esc(x.phone)}</td><td>${esc(x.service)}</td>
+ <td>${esc(x.address)}</td><td>${esc(x.problem)}</td>
+ <td>${esc(x.status)}</td><td><select onchange="updateStatus('${x.ticket}',this.value)">
+ ${statuses.map(s=>`<option ${s===x.status?"selected":""}>${s}</option>`).join("")}</select></td></tr>`).join("");
+}
+async function updateStatus(t,status){
+ const r=await fetch("/api/admin/complaints/"+t,{method:"PATCH",headers:{"Content-Type":"application/json","x-admin-key":KEY},body:JSON.stringify({status})});
+ if(!r.ok) alert("Could not update status"); else load();
+}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
+</script></body></html>
